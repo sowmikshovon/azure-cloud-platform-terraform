@@ -1,0 +1,40 @@
+name: Terraform Azure Governance CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  validate-and-scan-iac:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Infrastructure as Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check
+        continue-on-error: true
+
+      - name: Initialize Terraform without remote backend
+        run: terraform init -backend=false
+
+      - name: Validate Terraform configuration syntax
+        run: terraform validate
+
+      - name: Run Trivy IaC Cloud Governance Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '0'
+          severity: 'CRITICAL,HIGH'
